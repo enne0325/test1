@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="mn">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Үнэмлэх шалгагч — Demo</title>
+  <style>
+    body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans",sans-serif;margin:0;background:#f6f7fb;color:#111}
+    .wrap{max-width:760px;margin:40px auto;padding:28px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(20,30,50,0.06)}
+    h1{margin:0 0 12px;font-size:22px}
+    p.lead{margin:0 0 18px;color:#555}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    input[type="text"]{flex:1;padding:12px;border:1px solid #e2e6ef;border-radius:8px;font-size:15px}
+    button{padding:12px 16px;border-radius:10px;border:0;background:#0b63d6;color:#fff;font-weight:600;cursor:pointer}
+    .result{margin-top:18px;padding:12px;border-radius:8px;font-weight:700}
+    .valid{background:#e6fff2;color:#0a7a46}
+    .invalid{background:#fff0f0;color:#b22a2a}
+    small{display:block;margin-top:8px;color:#666}
+    .bulk{margin-top:18px}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:8px;border-bottom:1px solid #eef2fb;text-align:left}
+    label.file{display:inline-block;padding:10px 14px;border-radius:10px;background:#f0f6ff;border:1px dashed #d3e0ff;color:#1754c7;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Үнэмлэх / ID шалгагч (Demo)</h1>
+    <p class="lead">ID-ээ оруулж «Шалгах» товчийг дарахад систем дотоод жүгэнд тулгуурлан шалгана.</p>
+
+    <div class="row">
+      <input id="idInput" type="text" placeholder="Жишээ: MN-2025-00123 эсвэл 12345678" />
+      <button id="checkBtn">Шалгах</button>
+    </div>
+    <div id="resultArea"></div>
+
+    <div class="bulk">
+      <h3>Олон ID-ийг CSV-аар шалгах</h3>
+      <p>CSV файлын нэг багананд (эхний мөр нь ч байж болно) ID-үүд байх ёстой.</p>
+      <label class="file">
+        Файл сонгох
+        <input id="csvFile" type="file" accept=".csv" style="display:none" />
+      </label>
+      <small>CSV-аас уншиж, бүртгэлтэй/бүртгэлгүйг доор харуулна.</small>
+      <div id="bulkTableWrap"></div>
+    </div>
+  </div>
+
+  <script>
+    // --- Жишээ бүртгэлтэй ID-үүд (backend-ийн оронд энэхүү static list ашиглана) ---
+    const validIDs = new Set([
+      "MN-2025-00123", "MN-2025-00124", "12345678", "ABC-999",
+      "ID-100", "MN-0001"
+    ]);
+
+    const idInput = document.getElementById('idInput');
+    const checkBtn = document.getElementById('checkBtn');
+    const resultArea = document.getElementById('resultArea');
+    const csvFile = document.getElementById('csvFile');
+    const bulkTableWrap = document.getElementById('bulkTableWrap');
+
+    function normalize(str){
+      if(!str) return "";
+      return str.trim().toUpperCase();
+    }
+
+    checkBtn.addEventListener('click', ()=>{
+      const raw = idInput.value;
+      const id = normalize(raw);
+      if(!id){
+        resultArea.innerHTML = '<div class="result invalid">ID оруулна уу.</div>';
+        return;
+      }
+      const ok = validIDs.has(id);
+      resultArea.innerHTML = ok
+        ? <div class="result valid">VALID — ${id} бүртгэлтэй байна.</div>
+        : <div class="result invalid">INVALID — ${id} бүртгэлд олдсонгүй.</div>;
+    });
+
+    // CSV уншиж, мөр бүрийг шалгах
+    csvFile.addEventListener('change', (e)=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const text = ev.target.result;
+        // Хамгийн энгийн CSV парсер — мөр тус бүрийг аваад, эхний мөр давхар байж болно
+        const lines = text.split(/\r?\n/).filter(Boolean);
+        const rows = lines.map(l => {
+          // цуглуулсан мөрөөс эхний comma-оос өмнөх буюу бүх мөрийг авч үзнэ
+          const first = l.split(',')[0];
+          return normalize(first);
+        });
+
+        // HTML хүснэгт үүсгэх
+        let html = '<table><thead><tr><th>#</th><th>ID</th><th>Шалгалт</th></tr></thead><tbody>';
+        rows.forEach((r,i)=>{
+          const ok = r && validIDs.has(r);
+          html += <tr><td>${i+1}</td><td>${r || '(хоосон)'}</td><td style="color:${ok? '#0a7a46':'#b22a2a'}">${ok? 'VALID' : 'INVALID'}</td></tr>;
+        });
+        html += '</tbody></table>';
+        bulkTableWrap.innerHTML = html;
+      };
+      reader.readAsText(file, 'utf-8');
+    });
+
+    // Enter товч дарахад ажиллуулах
+    idInput.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter') checkBtn.click();
+    });
+  </script>
+</body>
+</html>
